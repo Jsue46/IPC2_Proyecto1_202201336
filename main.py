@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import os
+import graphviz
 
 class Azulejo:
     def __init__(self, color):
@@ -99,8 +100,41 @@ def cargar_archivo_xml(nombre_archivo):
     except ET.ParseError:
         print("Error al parsear el archivo XML.")
         return None
-   
+    
+def generate_table(patron_data, R, C):
+    table = ""
+    for i in range(R):
+        table += "<TR>"
+        for j in range(C):
+            color = '#FFFFFF' if patron_data[i * C + j] == 'B' else '#000000'
+            table += f'<TD BGCOLOR="{color}"></TD>'
+        table += "</TR>"
+    return table
 
+   
+def mostrar_submenu(lista_pisos):
+    nombre_piso = input("Ingrese el nombre del piso: ")
+    codigo_patron = input("Ingrese el código del patrón: ")
+    
+    piso = None
+    current = lista_pisos.head
+    while current:
+        if current.data.nombre == nombre_piso:
+            piso = current.data
+            break
+        current = current.next
+    
+    if piso:
+        patron_data = next((patron_data for codigo, patron_data in piso.patrones if codigo == codigo_patron), None)
+        if patron_data:
+            dot = graphviz.Digraph(comment=f'Piso: {nombre_piso} - Código: {codigo_patron}')
+            dot.node('tab', label=f'<<TABLE>{generate_table(patron_data, piso.R, piso.C)}</TABLE>>', shape='none')
+            dot.render(f'{nombre_piso}_{codigo_patron}', format='png', cleanup=True)
+            print("Piso generado correctamente.")
+        else:
+            print("El código de patrón ingresado no corresponde a ningún patrón disponible.")
+    else:
+        print("El nombre del piso ingresado no corresponde a ningún piso disponible.")
 def mostrar_menu_principal():
     print("\nMenú Principal:")
     print("1. Cargar archivo XML")
@@ -124,8 +158,7 @@ def main():
             else:
                 print("No se pudo cargar el archivo.")
         elif opcion == "2":
-           
-            print("Mostrando patrón gráfico...")
+            mostrar_submenu(lista_pisos)
         elif opcion == "3":
             
             print("Cambiando patrón...")
@@ -139,3 +172,4 @@ def main():
             print("Opción inválida.")
 
 
+main()
