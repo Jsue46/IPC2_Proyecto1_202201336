@@ -1,6 +1,6 @@
 import xml.etree.ElementTree as ET
 from graphviz import Digraph
-
+import os
 class NodoPiso:
     def __init__(self, nombre, R, C, F, S, patrones):
         self.nombre = nombre
@@ -118,6 +118,22 @@ def mostrar_patron(patron_data, R, C):
     dot.render('patron', format='png', cleanup=True)
     print("El patrón se ha mostrado gráficamente.")
 
+
+
+def mostrar_patron_modificado(patron_data, R, C):
+    dot = Digraph(comment='Patrón')
+    dot.node('tab', label=f'<<TABLE>{generar_tabla(patron_data, R, C)}</TABLE>>', shape='none')
+    dot.attr(fontsize='10', style='filled', fillcolor='lightgray', penwidth='0.5')
+
+    # Eliminar el archivo existente si existe
+    if os.path.exists('patron.png'):
+        os.remove('patron.png')
+
+    dot.render('patron', format='png', cleanup=True)
+    print("El patrón modificado se ha mostrado gráficamente.")
+
+
+
 def seleccionar_codigo_patron(piso):
     codigo_patron = input("Ingrese el código del patrón deseado: ")
     patron_data = None
@@ -142,7 +158,6 @@ def seleccionar_codigo_patron(piso):
 
     print(f"El costo mínimo para realizar el cambio hacia el nuevo patrón es: {costo/10} Quetzales.")
 
-   
     print("1. Imprimir datos")
     opcion = input("Seleccione una opción: ")
     if opcion == "1":
@@ -154,6 +169,8 @@ def seleccionar_codigo_patron(piso):
         print("Las instrucciones se han guardado en el archivo 'instrucciones.txt'.")
     else:
         print("Opción no válida.")
+
+    mostrar_patron_modificado(patron_data, piso.R, piso.C)
 
 def mostrar_pisos_y_patrones(lista_pisos):
     actual = lista_pisos.cabeza
