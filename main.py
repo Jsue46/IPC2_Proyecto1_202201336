@@ -1,175 +1,278 @@
 import xml.etree.ElementTree as ET
-import os
-import graphviz
+from graphviz import Digraph
 
-class Azulejo:
-    def __init__(self, color):
-        self.color = color
-        self.siguiente = None
-
-class Patron:
-    def __init__(self, codigo):
-        self.codigo = codigo
-        self.primero = None
-
-    def agregar_azulejo(self, color):
-        nuevo_azulejo = Azulejo(color)
-        if not self.primero:
-            self.primero = nuevo_azulejo
-        else:
-            actual = self.primero
-            while actual.siguiente:
-                actual = actual.siguiente
-            actual.siguiente = nuevo_azulejo
-
-class Piso:
-    def __init__(self, nombre, R, C, F, S):
+class NodoPiso:
+    def __init__(self, nombre, R, C, F, S, patrones):
         self.nombre = nombre
         self.R = R
         self.C = C
         self.F = F
         self.S = S
-        self.patrones = ListaEnlazada()
+        self.patrones = patrones
 
-    def agregar_patron(self, patron):
-        self.patrones.insertar(patron)
+class NodoInstruccion:
+    def __init__(self, instruccion=None, siguiente=None):
+        self.instruccion = instruccion
+        self.siguiente = siguiente
 
-class Nodo:
-    def __init__(self, data):
-        self.data = data
-        self.next = None
+def calcular_costo_minimo(patron_origen, patron_destino, F, S):
+    costo = 0
+    instrucciones = None
 
+    cambios = 0
+    cambios_maximos = 2
+
+    instrucciones = ListaEnlazada()
+
+    for i in range(len(patron_origen)):
+        if patron_origen[i] != patron_destino[i]:
+            cambios += 1
+
+            if cambios <= cambios_maximos:
+                if costo + F <= S:
+                    costo += F
+                    instrucciones.agregar(f"Voltear el azulejo en la posición {i + 1}")
+                else:
+                    costo += S
+                    instrucciones.agregar(f"Intercambiar el azulejo en la posición {i + 1} con el siguiente")
+            else:
+                costo += S
+                instrucciones.agregar(f"Intercambiar el azulejo en la posición {i + 1} con el siguiente")
+
+
+    if cambios > 0 and instrucciones is not None:
+        return costo, instrucciones.obtener_instrucciones()
+    else:
+        return None, None
+
+class NodoDato:
+    def __init__(self, dato=None, siguiente=None):
+        self.dato = dato
+        self.siguiente = siguiente
+
+class ListaPisos:
+    def __init__(self):
+        self.cabeza = None
+
+    def agregar_piso(self, nombre, R, C, F, S, patrones):
+        nuevo_piso = NodoPiso(nombre, R, C, F, S, patrones)
+        if not self.cabeza:
+            self.cabeza = nuevo_piso
+        else:
+            actual = self.cabeza
+            while actual.siguiente:
+                actual = actual.siguiente
+            actual.siguiente = nuevo_piso
+
+    def buscar_piso(self, nombre_piso):
+        actual = self.cabeza
+        while actual:
+            if actual.nombre == nombre_piso:
+                return actual
+            actual = actual.siguiente
+        return None
+
+# Mantenemos la clase ListaEnlazada sin modificar
 class ListaEnlazada:
     def __init__(self):
-        self.head = None
+        self.cabeza = None
 
-    def insertar(self, data):
-        nuevo_nodo = Nodo(data)
-        if self.head is None:
-            self.head = nuevo_nodo
+    def agregar(self, dato):
+        nuevo_nodo = NodoDato(dato)
+        if self.cabeza is None:
+            self.cabeza = nuevo_nodo
         else:
-            current = self.head
-            while current.next is not None:
-                current = current.next
-            current.next = nuevo_nodo
+            actual = self.cabeza
+            while actual.siguiente is not None:
+                actual = actual.siguiente
+            actual.siguiente = nuevo_nodo
 
-    # Método para mostrar la lista enlazada
-    def mostrar(self):
-        current = self.head
-        while current:
-            print(current.data)
-            current = current.next
+    def obtener_instrucciones(self):
+        instrucciones = []
+        actual = self.cabeza
+        while actual:
+            instrucciones.append(actual.dato)
+            actual = actual.siguiente
+        return instrucciones
 
-# Función para cargar el archivo XML y almacenar los datos en listas enlazadas
-def cargar_datos_desde_archivo(nombre_archivo):
-    return cargar_archivo_xml(nombre_archivo)
-
-# Función para cargar el archivo XML
-def cargar_archivo_xml(nombre_archivo):
-    try:
-        ruta_archivo = os.path.join(os.getcwd(), nombre_archivo)
-        tree = ET.parse(ruta_archivo)
-        root = tree.getroot()
-
-        pisos = ListaEnlazada()  # Lista enlazada para almacenar los pisos
-
-        for piso_xml in root.findall('piso'):
-            nombre = piso_xml.get('nombre')
-            R = int(piso_xml.find('R').text)
-            C = int(piso_xml.find('C').text)
-            F = int(piso_xml.find('F').text)
-            S = int(piso_xml.find('S').text)
-
-            piso = Piso(nombre, R, C, F, S)
-
-            patrones_xml = piso_xml.find('patrones')
-            for patron_xml in patrones_xml.findall('patron'):
-                codigo = patron_xml.get('codigo')
-                patron_str = patron_xml.text.strip()
-                patron = Patron(codigo)
-                for letra in patron_str:
-                    patron.agregar_azulejo(letra)
-                piso.agregar_patron(patron)
-
-            pisos.insertar(piso)
-
-        return pisos
-    except FileNotFoundError:
-        print("El archivo especificado no se encontró.")
+    def buscar_piso(self, nombre_piso):
+        actual = self.cabeza
+        while actual:
+            if actual.dato.nombre == nombre_piso:
+                return actual 
+            actual = actual.siguiente
         return None
-    except ET.ParseError:
-        print("Error al parsear el archivo XML.")
-        return None
+
+def menu():
+
+    print("Bienvenido a Pisos de Guatemala, S.A.")
+    print("Menú Principal")
+    print("1. Cargar archivo.")
+    print("2. Mostrar gráficamente el patrón.")
+    print("3. Seleccionar un nuevo código de patrón")
+    print("4. Mostrar pisos cargados")
+    print("5. Salir")
+
+def mostrar_patron(patron_data, R, C):
+    dot = Digraph(comment='Patrón')
+    dot.node('tab', label=f'<<TABLE>{generar_tabla(patron_data, R, C)}</TABLE>>', shape='none')
+    dot.attr(fontsize='10', style='filled', fillcolor='lightgray', penwidth='0.5')
+    dot.render('patron', format='png', cleanup=True)
+    print("El patrón se ha mostrado gráficamente.")
+
+def seleccionar_codigo_patron(piso):
+    codigo_patron = input("Ingrese el código del patrón deseado: ")
+    patron_data = None
+    actual = piso.patrones.cabeza
+    while actual:
+        codigo, patron = actual.dato
+        if codigo == codigo_patron:
+            patron_data = patron
+            break
+        actual = actual.siguiente
+
+    if patron_data is None:
+        print("El código de patrón ingresado no corresponde a ningún patrón disponible.")
+        return
     
-def generate_table(patron_data, R, C):
+    nuevo_codigo = input("Ingrese el nuevo código de patrón: ")
+    costo, instrucciones = calcular_costo_minimo(piso.patrones.cabeza.dato[1], patron_data, piso.S, piso.F) # Corregir aquí
+
+    if instrucciones is None:
+        print("No se encontraron instrucciones para realizar el cambio.")
+        return
+
+    print(f"El costo mínimo para realizar el cambio hacia el nuevo patrón es: {costo} Quetzales.")
+    opcion = input("¿Desea mostrar las instrucciones en consola o en un archivo? (consola/archivo): ").lower()
+    if opcion == "consola":
+        for instruccion in instrucciones:
+            print(instruccion)
+    elif opcion == "archivo":
+        with open("instrucciones.txt", "w") as f:
+            for instruccion in instrucciones:
+                f.write(instruccion + "\n")
+        print("Las instrucciones se han guardado en el archivo 'instrucciones.txt'.")
+    else:
+        print("Opción no válida.")
+
+
+def mostrar_instrucciones(instrucciones):
+    actual = instrucciones
+    while actual:
+        print(actual.instruccion)
+        actual = actual.siguiente
+
+def guardar_instrucciones_en_archivo(instrucciones):
+    with open("instrucciones.txt", "w") as f:
+        actual = instrucciones
+        while actual:
+            f.write(actual.instruccion + "\n")
+            actual = actual.siguiente
+    print("Las instrucciones se han guardado en el archivo 'instrucciones.txt'.")
+
+def mostrar_pisos_y_patrones(lista_pisos):
+    actual = lista_pisos.cabeza
+    while actual:
+        piso = actual.dato
+        print(f"Piso: {piso.nombre}")
+        print("Códigos de patrones disponibles:")
+        actual_patron = piso.patrones.cabeza
+        while actual_patron:
+            codigo, _ = actual_patron.dato
+            print(f"- Código: {codigo}")
+            actual_patron = actual_patron.siguiente
+        print()
+        actual = actual.siguiente
+
+def leer_archivo(filename):
+    try:
+        tree = ET.parse(filename)
+        root = tree.getroot()
+        lista_pisos = ListaEnlazada()
+        for piso in root.findall('piso'):
+            nombre = piso.get('nombre')
+            R = int(piso.find('R').text)
+            C = int(piso.find('C').text)
+            F = int(piso.find('F').text)
+            S = int(piso.find('S').text)
+            patrones = ListaEnlazada()
+            for patron in piso.find('patrones').findall('patron'):
+                codigo = patron.get('codigo')
+                patron_data = patron.text.strip()
+                patrones.agregar((codigo, patron_data))
+            nuevo_piso = NodoPiso(nombre, R, C, F, S, patrones)
+            lista_pisos.agregar(nuevo_piso)
+        return lista_pisos
+    except FileNotFoundError:
+        print("El archivo especificado no existe.")
+        return None
+
+def generar_tabla(patron_data, R, C):
     table = ""
     for i in range(R):
         table += "<TR>"
         for j in range(C):
-            color = '#FFFFFF' if patron_data[i * C + j] == 'B' else '#000000'
-            table += f'<TD BGCOLOR="{color}"></TD>'
+            color = '#000000' if patron_data[i * C + j] == 'B' else '#FFFFFF'
+            table += f'<TD BGCOLOR="{color}" WIDTH="10" HEIGHT="10"></TD>'  # Añadido el tamaño de los cuadros
         table += "</TR>"
     return table
 
-   
-def mostrar_submenu(lista_pisos):
-    nombre_piso = input("Ingrese el nombre del piso: ")
-    codigo_patron = input("Ingrese el código del patrón: ")
-    
-    piso = None
-    current = lista_pisos.head
-    while current:
-        if current.data.nombre == nombre_piso:
-            piso = current.data
-            break
-        current = current.next
-    
-    if piso:
-        patron_data = next((patron_data for codigo, patron_data in piso.patrones if codigo == codigo_patron), None)
-        if patron_data:
-            dot = graphviz.Digraph(comment=f'Piso: {nombre_piso} - Código: {codigo_patron}')
-            dot.node('tab', label=f'<<TABLE>{generate_table(patron_data, piso.R, piso.C)}</TABLE>>', shape='none')
-            dot.render(f'{nombre_piso}_{codigo_patron}', format='png', cleanup=True)
-            print("Piso generado correctamente.")
-        else:
-            print("El código de patrón ingresado no corresponde a ningún patrón disponible.")
-    else:
-        print("El nombre del piso ingresado no corresponde a ningún piso disponible.")
-def mostrar_menu_principal():
-    print("\nMenú Principal:")
-    print("1. Cargar archivo XML")
-    print("2. Mostrar Patrón Gráfico")
-    print("3. Cambiar Patrón")
-    print("4. Mostrar Todos los Pisos")
-    print("5. Salir")
 
-
-def main():
-    lista_pisos = ListaEnlazada()  #lista enlazada para almacenar pisos
+if __name__ == "__main__":
     while True:
-        mostrar_menu_principal()
+        menu()
         opcion = input("Seleccione una opción: ")
+
+        
         if opcion == "1":
-          
-            nombre_archivo = input("Ingrese el nombre del archivo XML: ")
-            datos_pisos = cargar_datos_desde_archivo(nombre_archivo)
-            if datos_pisos:
-                print("Archivo cargado correctamente.")
+            filename = input("Ingrese el nombre del archivo XML: ")
+            lista_pisos = leer_archivo(filename)
+            if lista_pisos is not None:
+                print("Archivo leído correctamente")
+                print("Los pisos y patrones se han cargado correctamente.")
+                print("")
+                print("")
             else:
-                print("No se pudo cargar el archivo.")
+                print("El archivo especificado no existe.")
+
+        
+
         elif opcion == "2":
-            mostrar_submenu(lista_pisos)
+            nombre_piso = input("Ingrese el nombre del piso: ")
+            codigo_patron = input("Ingrese el código del patrón: ")
+            piso_nodo = lista_pisos.buscar_piso(nombre_piso)
+            if piso_nodo and piso_nodo.dato:   
+                patron_data = None
+                actual = piso_nodo.dato.patrones.cabeza 
+                while actual:
+                    codigo, data = actual.dato
+                    if codigo == codigo_patron:
+                        patron_data = data
+                        break
+                    actual = actual.siguiente
+                if patron_data:
+                    mostrar_patron(patron_data, piso_nodo.dato.R, piso_nodo.dato.C)
+                else:
+                    print("El código de patrón ingresado no corresponde a ningún patrón disponible.")
+            else:
+                print("El nombre del piso ingresado no corresponde a ningún piso disponible.")
+        
         elif opcion == "3":
-            
-            print("Cambiando patrón...")
+            nombre_piso = input("Ingrese el nombre del piso: ")
+            codigo_patron = input("Ingrese el código del patrón: ")
+            piso_nodo = lista_pisos.buscar_piso(nombre_piso)
+            if piso_nodo and piso_nodo.dato:  
+                seleccionar_codigo_patron(piso_nodo.dato)
+            else:
+                print("El nombre del piso ingresado no corresponde a ningún piso disponible.")
+        
         elif opcion == "4":
-            
-            print("Mostrando todos los pisos...")
+            print()
+            mostrar_pisos_y_patrones(lista_pisos)
+        
         elif opcion == "5":
-            print("Saliendo del programa...")
+            print("¡Hasta luego!")
             break
+        
         else:
-            print("Opción inválida.")
-
-
-main()
+            print("Opción no válida. Por favor, seleccione una opción válida.")
